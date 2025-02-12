@@ -4,15 +4,23 @@
 #include "std_set.hpp"
 
 #include <mutex>
+#include <iostream>
+#include <climits>
+
+//TODO: check lazy and optimistic algorithm with the book
+//lab 1 finegrained implement another version
+
 
 /// The node used for the linked list implementation of a set in the [`LazySet`]
 /// class. This struct is used for task 3
 struct LazySetNode {
     // A02: You can add or remove fields as needed.
     int value;
-    int mark;
+    bool marked;
     LazySetNode* next;
     std::mutex lock;
+
+    LazySetNode(int val) : value(val), marked(false), next(nullptr) {}
 };
 
 /// A set implementation using a linked list with optimistic syncronization.
@@ -22,44 +30,98 @@ private:
     // pointer should be sufficient for this task
     LazySetNode* head;
 public:
-    LazySet()
-    {
+    LazySet() {
         // A02: Initiate the internal state
+        head = new LazySetNode(INT_MIN); // Sentinel node
+        head->next = new LazySetNode(INT_MAX); // Sentinel node
     }
 
     ~LazySet() override {
         // A02: Cleanup any memory that was allocated
+        LazySetNode* current = head;
+        while (current != nullptr) {
+            LazySetNode* next = current->next;
+            delete current;
+            current = next;
+        }
     }
 
 private:
-    LazySetNode* locate(int value) {
-        // A02: Implement the `locate` function used for lazy synchronization.
-        return nullptr;
+    LazySetNode* locate(int value, LazySetNode** pred) {
+        LazySetNode* curr = head;
+        *pred = nullptr;
+        while (curr->value < value) {
+            *pred = curr;
+            curr = curr->next;
+        }
+        return curr;
     }
 
 public:
     bool add(int elem) override {
-        bool result = false;
-        // A02: Add code to insert the element into the set and update `result`.
-        return result;
+        while (true) {
+            LazySetNode* pred;
+            LazySetNode* curr = locate(elem, &pred);
+
+            std::lock_guard<std::mutex> pred_lock(pred->lock);
+            std::lock_guard<std::mutex> curr_lock(curr->lock);
+
+            if (validate(pred, curr)) {
+                if (curr->value == elem) {
+                    return false;
+                } else {
+                    LazySetNode* newNode = new LazySetNode(elem);
+                    newNode->next = curr;
+                    pred->next = newNode;
+                    return true;
+                }
+            }
+        }
     }
 
     bool rmv(int elem) override {
-        bool result = false;
-        // A02: Add code to remove the element from the set and update `result`.
-        return result;
+        while (true) {
+            LazySetNode* pred;
+            LazySetNode* curr = locate(elem, &pred);
+
+            std::lock_guard<std::mutex> pred_lock(pred->lock);
+            std::lock_guard<std::mutex> curr_lock(curr->lock);
+
+            if (validate(pred, curr)) {
+                if (curr->value != elem) {
+                    return false;
+                } else {
+                    curr->marked = true;
+                    pred->next = curr->next;
+                    delete curr;
+                    return true;
+                }
+            }
+        }
     }
 
     bool ctn(int elem) override {
-        bool result = false;
-        // A02: Add code to check if the element is inside the set and update `result`.
-        return result;
+        LazySetNode* curr = head;
+        while (curr->value < elem) {
+            curr = curr->next;
+        }
+        return (curr->value == elem && !curr->marked);
     }
 
     void print_state() override {
         // A02: Optionally, add code to print the state. This is useful for debugging,
         // but not part of the assignment
-        std::cout << "LazySet {...}";
+        LazySetNode* curr = head;
+        while (curr != nullptr) {
+            std::cout << curr->value << (curr->marked ? " (marked)" : "") << " -> ";
+            curr = curr->next;
+        }
+        std::cout << "nullptr" << std::endl;
+    }
+
+private:
+    bool validate(LazySetNode* pred, LazySetNode* curr) {
+        return !pred->marked && !curr->marked && pred->next == curr;
     }
 };
 
