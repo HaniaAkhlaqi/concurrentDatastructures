@@ -1,9 +1,12 @@
+
 #pragma once
 
 #include "set.hpp"
 #include "std_set.hpp"
 
 #include <mutex>
+#include <iostream>
+#include <climits>
 
 /// The node used for the linked list implementation of a set in the [`OptimisticSet`]
 /// class. This struct is used for task 3
@@ -12,48 +15,99 @@ struct OptimisticSetNode {
     int value;
     OptimisticSetNode* next;
     std::mutex lock;
+
+    OptimisticSetNode(int val) : value(val), next(nullptr) {}
 };
 
-/// A set implementation using a linked list with optimistic syncronization.
+/// A set implementation using a linked list with optimistic synchronization.
 class OptimisticSet: public Set {
 private:
     // A01: You can add or remove fields as needed. Just having the `head`
     // pointer should be sufficient for this task
     OptimisticSetNode* head;
+
 public:
-    OptimisticSet()
-    {
+    OptimisticSet() : head(new OptimisticSetNode(INT_MIN)) {
         // A01: Initiate the internal state
+        head->next = new OptimisticSetNode(INT_MAX);
     }
 
     ~OptimisticSet() override {
         // A01: Cleanup any memory that was allocated
+        OptimisticSetNode* current = head;
+        while (current != nullptr) {
+            OptimisticSetNode* next = current->next;
+            delete current;
+            current = next;
+        }
     }
 
 private:
-    bool validate(OptimisticSetNode* p, OptimisticSetNode* c) {
+    bool validate(OptimisticSetNode* pred, OptimisticSetNode* curr) {
         // A01: Implement the `validate` function used during
         // optimistic synchronization.
+        OptimisticSetNode* node = head;
+        while (node != nullptr && node->value <= pred->value) {
+            if (node == pred) {
+                return pred->next == curr;
+            }
+            node = node->next;
+        }
         return false;
     }
 
 public:
     bool add(int elem) override {
-        bool result = false;
-        // A01: Add code to insert the element into the set and update `result`.
-        return result;
+        while (true) {
+            OptimisticSetNode* pred = head;
+            OptimisticSetNode* curr = head->next;
+            while (curr->value < elem) {
+                pred = curr;
+                curr = curr->next;
+            }
+            std::lock_guard<std::mutex> predLock(pred->lock);
+            std::lock_guard<std::mutex> currLock(curr->lock);
+            if (validate(pred, curr)) {
+                if (curr->value == elem) {
+                    return false;
+                } else {
+                    OptimisticSetNode* newNode = new OptimisticSetNode(elem);
+                    newNode->next = curr;
+                    pred->next = newNode;
+                    return true;
+                }
+            }
+        }
     }
 
     bool rmv(int elem) override {
-        bool result = false;
-        // A01: Add code to remove the element from the set and update `result`.
-        return result;
+        while (true) {
+            OptimisticSetNode* pred = head;
+            OptimisticSetNode* curr = head->next;
+            while (curr->value < elem) {
+                pred = curr;
+                curr = curr->next;
+            }
+            std::lock_guard<std::mutex> predLock(pred->lock);
+            std::lock_guard<std::mutex> currLock(curr->lock);
+            if (validate(pred, curr)) {
+                if (curr->value != elem) {
+                    return false;
+                } else {
+                    pred->next = curr->next;
+                    delete curr;
+                    return true;
+                }
+            }
+        }
     }
 
     bool ctn(int elem) override {
-        bool result = false;
-        // A01: Add code to check if the element is inside the set and update `result`.
-        return result;
+        OptimisticSetNode* curr = head;
+        while (curr->value < elem) {
+            curr = curr->next;
+        }
+        return curr->value == elem;
     }
 
     void print_state() override {
