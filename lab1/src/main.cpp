@@ -13,49 +13,53 @@
 #define DEFAULT_OP_MOD 128
 
 const std::vector<OpWeights<SetOperator>> DEFAULT_SET_GEN_WEIGHTS = {
-    OpWeights<SetOperator> {op: SetOperator::Add, weight: 4},
-    OpWeights<SetOperator> {op: SetOperator::Remove, weight: 3},
-    OpWeights<SetOperator> {op: SetOperator::Contains, weight: 3},
+    OpWeights<SetOperator>{op : SetOperator::Add, weight : 4},
+    OpWeights<SetOperator>{op : SetOperator::Remove, weight : 3},
+    OpWeights<SetOperator>{op : SetOperator::Contains, weight : 3},
 };
 
 template <class CDS, typename Op>
-void worker_thread_func(CDS* data_structure, OpGenerator<Op>* generator, int thread_id) {
-    while (auto maybe_operation = generator->next()) {
+void worker_thread_func(CDS *data_structure, OpGenerator<Op> *generator, int thread_id)
+{
+    while (auto maybe_operation = generator->next())
+    {
         SetOperation operation = maybe_operation.value();
         apply_op(data_structure, operation);
     }
 }
 
 template <class CDS, class DS, typename Op>
-void monitor_thread_func(EventMonitor<CDS, DS, Op>* monitor) {
+void monitor_thread_func(EventMonitor<CDS, DS, Op> *monitor)
+{
     monitor->monitor();
 }
 
 template <typename CDS, typename DS, typename Op>
 bool test_data_structure_n_threads(
-    CDS* concurrent_data_structure,
-    OpGenerator<Op>* generator,
-    EventMonitor<CDS, DS, Op>* monitor,
-    int thread_count
-) {
+    CDS *concurrent_data_structure,
+    OpGenerator<Op> *generator,
+    EventMonitor<CDS, DS, Op> *monitor,
+    int thread_count)
+{
     // Setup threads
     void *ptr = malloc(sizeof(std::thread) * thread_count);
     memset(ptr, 0, sizeof(std::thread) * thread_count);
     std::thread *workers = (std::thread *)ptr;
-    for (int thread_id = 0; thread_id < thread_count; thread_id++) {
+    for (int thread_id = 0; thread_id < thread_count; thread_id++)
+    {
         workers[thread_id] = std::thread(
             worker_thread_func<CDS, Op>,
             std::ref(concurrent_data_structure),
             std::ref(generator),
-            std::ref(thread_id)
-        );
+            std::ref(thread_id));
     }
 
     // Start monitor thread
     std::thread monitor_thread(monitor_thread_func<CDS, DS, Op>, std::ref(monitor));
 
     // Join threads
-    for (int i = 0; i < thread_count; i++) {
+    for (int i = 0; i < thread_count; i++)
+    {
         workers[i].join();
     }
 
@@ -70,7 +74,8 @@ bool test_data_structure_n_threads(
 }
 
 template <typename Set>
-bool test_set_n_threads(int thread_count, int op_arg_mod) {
+bool test_set_n_threads(int thread_count, int op_arg_mod)
+{
     StdSet test_set;
     EventMonitor<Set, StdSet, SetOperator> monitor(&test_set);
     OpGenerator<SetOperator> generator(DEFAULT_SET_GEN_WEIGHTS, OPERATION_COUNT, op_arg_mod, DEFAULT_GENERATOR_SEED);
@@ -80,7 +85,8 @@ bool test_set_n_threads(int thread_count, int op_arg_mod) {
     return test_data_structure_n_threads<Set, StdSet, SetOperator>(&set, &generator, &monitor, thread_count);
 }
 
-int task_1() {
+int task_1()
+{
     std::cout << "# Task 1" << std::endl;
 
     {
@@ -116,12 +122,33 @@ int task_1() {
     }
 
     // A01: Add a valid sequence of 10+ instructions
+    {
+        std::cout << "## Test 4: sequence of 10+ instructions" << std::endl;
+        std::queue<SetEvent> valid_4;
+
+        valid_4.push(SetEvent(SetOperator::Add, 5, true));       
+        valid_4.push(SetEvent(SetOperator::Add, 3, true));      
+        valid_4.push(SetEvent(SetOperator::Add, 5, false));      
+        valid_4.push(SetEvent(SetOperator::Contains, 5, true));  
+        valid_4.push(SetEvent(SetOperator::Contains, 3, true));  
+        valid_4.push(SetEvent(SetOperator::Remove, 5, true));    
+        valid_4.push(SetEvent(SetOperator::Contains, 5, false)); 
+        valid_4.push(SetEvent(SetOperator::Remove, 3, true));    
+        valid_4.push(SetEvent(SetOperator::Remove, 3, false));   
+        valid_4.push(SetEvent(SetOperator::Add, 7, true));       
+        valid_4.push(SetEvent(SetOperator::Contains, 7, true));
+
+        StdSet set;
+        test_events(&set, &valid_4, true);
+        std::cout << std::endl;
+    }
 
     return 0;
 }
 
 // A02: This function tests your implementation of the `SimpleSet` class in `simple_set.hpp`
-int task_2() {
+int task_2()
+{
     bool valid = true;
     std::cout << "# Task 2: Simple Set" << std::endl;
 
@@ -133,87 +160,105 @@ int task_2() {
     valid &= test_set_n_threads<SimpleSet>(4, DEFAULT_OP_MOD);
     std::cout << std::endl;
 
-    if (valid) {
+    if (valid)
+    {
         return 0;
-    } else {
+    }
+    else
+    {
         return -1;
     }
 }
 
 /// A03: This function tests your implementation of the `CoarseSet` class in `coarse_set.hpp`
-int task_3() {
+int task_3()
+{
     bool valid = true;
     std::cout << "# Task 3: Coarse Set" << std::endl;
 
-    for (int test_run = 0; test_run < 8; test_run++) {
+    for (int test_run = 0; test_run < 8; test_run++)
+    {
         std::cout << "## Testing `CoarseSet` with 4 thread and seed: " << test_run << std::endl;
         valid &= test_set_n_threads<CoarseSet>(4, DEFAULT_OP_MOD);
         std::cout << std::endl;
 
-        if (!valid) {
+        if (!valid)
+        {
             break;
         }
     }
 
-    if (valid) {
+    if (valid)
+    {
         return 0;
-    } else {
+    }
+    else
+    {
         return -1;
     }
 }
 
 /// A04: This function tests your implementation of the `FineSet` class in `fine_set.hpp`
-int task_4() {
+int task_4()
+{
     bool valid = true;
     std::cout << "# Task 4: Fine Set" << std::endl;
 
-    for (int test_run = 0; test_run < 8; test_run++) {
+    for (int test_run = 0; test_run < 8; test_run++)
+    {
         std::cout << "## Testing `FineSet` with 4 thread and seed: " << test_run << std::endl;
         valid &= test_set_n_threads<FineSet>(4, DEFAULT_OP_MOD);
         std::cout << std::endl;
 
-        if (!valid) {
+        if (!valid)
+        {
             break;
         }
     }
 
-    if (valid) {
+    if (valid)
+    {
         return 0;
-    } else {
+    }
+    else
+    {
         return -1;
     }
 }
 
-
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     // Input validation
-    if (argc < 2) {
+    if (argc < 2)
+    {
         fprintf(stderr, "Please select the task you want to execute\n");
         return -1;
     }
 
     int selection;
-    try {
+    try
+    {
         selection = std::stoi(argv[1]);
     }
-    catch (const std::invalid_argument& ia) {
+    catch (const std::invalid_argument &ia)
+    {
         fprintf(stderr, "The first argument has to be an integer\n");
         return -1;
     }
 
     srand(0);
-    switch (selection) {
-        case 1:
-            return task_1();
-        case 2:
-            return task_2();
-        case 3:
-            return task_3();
-        case 4:
-            return task_4();
-        default:
-            fprintf(stderr, "Please enter a valid task, as the first argument\n");
-            return -1;
+    switch (selection)
+    {
+    case 1:
+        return task_1();
+    case 2:
+        return task_2();
+    case 3:
+        return task_3();
+    case 4:
+        return task_4();
+    default:
+        fprintf(stderr, "Please enter a valid task, as the first argument\n");
+        return -1;
     }
 }
-

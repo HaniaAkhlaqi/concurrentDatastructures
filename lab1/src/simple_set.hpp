@@ -9,6 +9,8 @@ struct SimpleSetNode {
     // A02: You can add or remove fields as needed.
     int value;
     SimpleSetNode* next;
+    SimpleSetNode(int value) : value(value), next(nullptr) {}
+    
 };
 
 /// A simple set implementation using a linked list. This class shouldn't have
@@ -21,33 +23,87 @@ private:
     EventMonitor<SimpleSet, StdSet, SetOperator>* monitor;
 public:
     SimpleSet(EventMonitor<SimpleSet, StdSet, SetOperator>* monitor) :
-        monitor(monitor)
+        head(nullptr), monitor(monitor)
     {
         // A02: Initiate the internal state
+        
     }
 
     ~SimpleSet() override {
-        // A02: Cleanup any memory that was allocated
+    // A02: Cleanup any memory that was allocated
+    SimpleSetNode* current = head;
+        while (current) {
+            SimpleSetNode* temp = current;
+            current = current->next;
+            delete temp;
+        }
     }
 
     bool add(int elem) override {
-        bool result = false;
         // A02: Add code to insert the element into the set and update `result`.
-        this->monitor->add(SetEvent(SetOperator::Add, elem, result));
+        // Check if element already exists
+        bool result = false;
+       SimpleSetNode* current = head;
+        while (current) {
+            if (current->value == elem) {
+                monitor->add(SetEvent(SetOperator::Add, elem, false));
+                result = false;
+                return result;
+            }
+            current = current->next;
+        }
+
+        // Inserting at the head of the list
+        SimpleSetNode* new_node = new SimpleSetNode(elem);
+        new_node->next = head;
+        head = new_node;
+
+        this->monitor->add(SetEvent(SetOperator::Add, elem, true));
+        result = true;
         return result;
     }
 
     bool rmv(int elem) override {
         bool result = false;
         // A02: Add code to remove the element from the set and update `result`.
-        this->monitor->add(SetEvent(SetOperator::Remove, elem, result));
+        SimpleSetNode* current = head;
+        SimpleSetNode* prev = nullptr;
+
+        while (current) {
+            if (current->value == elem) {
+                if (prev) {
+                    prev->next = current->next;
+                } else {
+                    head = current->next;
+                }
+                delete current;
+                monitor->add(SetEvent(SetOperator::Remove, elem, true));
+                result = true;
+                return result;
+            }
+            prev = current;
+            current = current->next;
+        }
+
+        this->monitor->add(SetEvent(SetOperator::Remove, elem, false));
+        result = false;
         return result;
     }
 
     bool ctn(int elem) override {
         bool result = false;
         // A02: Add code to check if the element is inside the set and update `result`.
-        this->monitor->add(SetEvent(SetOperator::Contains, elem, result));
+        SimpleSetNode* current = head;
+        while (current) {
+            if (current->value == elem) {
+                monitor->add(SetEvent(SetOperator::Contains, elem, true));
+                result = true;
+                return result;
+            }
+            current = current->next;
+        }
+        this->monitor->add(SetEvent(SetOperator::Contains, elem, false));
+        result = false;
         return result;
     }
 

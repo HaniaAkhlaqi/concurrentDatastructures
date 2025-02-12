@@ -1,5 +1,10 @@
 # Code Preset for Lab 1
 
+how to compile : g++ -std=c++17 -o a.out main.cpp -Wall -pthread
+
+requires the specifid std lib c++17
+-pthread because the a.out is an intermidiate file meaning not an executable but to link it to an executable from main pthread lib is needed for the linker
+
 Template for Lab Assignment 1 for the course "Concurrent Data Structures".
 
 ## Overview
