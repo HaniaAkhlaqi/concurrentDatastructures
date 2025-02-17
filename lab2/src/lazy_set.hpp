@@ -7,8 +7,8 @@
 #include <iostream>
 #include <climits>
 
-//TODO: check lazy and optimistic algorithm with the book
-//lab 1 finegrained implement another version
+
+//lab 2 task 4 seg fault maybe change all constructors like in task 3
 
 
 /// The node used for the linked list implementation of a set in the [`LazySet`]

@@ -103,11 +103,19 @@ public:
     }
 
     bool ctn(int elem) override {
-        OptimisticSetNode* curr = head;
-        while (curr->value < elem) {
-            curr = curr->next;
+        while (true) {
+            OptimisticSetNode* pred = head;
+            OptimisticSetNode* curr = head->next;
+            while (curr->value < elem) {
+                pred = curr;
+                curr = curr->next;
+            }
+            std::lock_guard<std::mutex> predLock(pred->lock);
+            std::lock_guard<std::mutex> currLock(curr->lock);
+            if (validate(pred, curr)) {
+                return curr->value == elem;
+            }
         }
-        return curr->value == elem;
     }
 
     void print_state() override {
@@ -116,4 +124,3 @@ public:
         std::cout << "OptimisticSet {...}";
     }
 };
-

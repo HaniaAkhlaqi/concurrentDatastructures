@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -Wall -g -lpthread
+CFLAGS := -std=c++17 -Wall -g -pthread
 TARGET := a.out
 FLAGS := ""
 
